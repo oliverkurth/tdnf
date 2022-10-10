@@ -108,6 +108,18 @@ int main(int argc, char **argv)
 
         pszCmd = pCmdArgs->ppszCmds[0];
 
+        if (!strcmp(pszCmd, "makecache"))
+        {
+            pCmdArgs->nRefresh = 1;
+        }
+
+        dwError = TDNFInit();
+        BAIL_ON_CLI_ERROR(dwError);
+
+        dwError = TDNFOpenHandle(pCmdArgs, &pTdnf);
+        BAIL_ON_CLI_ERROR(dwError);
+        _context.hTdnf = pTdnf;
+
         for (int i = 0; i < (int)ARRAY_SIZE(arCmdMap); i++)
         {
             if (strcmp(pszCmd, arCmdMap[i].pszCmdName) == 0)
@@ -123,19 +135,6 @@ int main(int argc, char **argv)
                 dwError = ERROR_TDNF_PERM;
                 BAIL_ON_CLI_ERROR(dwError);
             }
-
-            if (!strcmp(pszCmd, "makecache"))
-            {
-                pCmdArgs->nRefresh = 1;
-            }
-
-            dwError = TDNFInit();
-            BAIL_ON_CLI_ERROR(dwError);
-
-            dwError = TDNFOpenHandle(pCmdArgs, &pTdnf);
-            BAIL_ON_CLI_ERROR(dwError);
-
-            _context.hTdnf = pTdnf;
 
             if (pCmdArgs->nVerbose)
             {
