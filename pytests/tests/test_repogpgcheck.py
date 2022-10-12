@@ -59,6 +59,17 @@ def set_repo_flag_repo_gpgcheck(utils, flag):
     utils.run(['sed', '-i', '2iskip_if_unavailable=False', tdnf_repo])
 
 
+def test_is_enabled(utils):
+    enable_plugins(utils)
+    ret = utils.run(['tdnf', 'plugin', 'list'])
+    found = False
+    for line in ret['stdout']:
+        if (line.startswith('tdnfrepogpgcheck')):
+            assert 'enabled' in line
+            found = True
+    assert found
+
+
 # make sure libtdnfrepogpgcheck.so is loaded without issues
 def test_tdnfrepogpgcheck_plugin_load(utils):
     enable_plugins(utils)
