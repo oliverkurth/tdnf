@@ -401,3 +401,10 @@ TDNFCliInvokeMark(
     char **ppszPkgNameSpecs,
     uint32_t nValue
     );
+
+uint32_t
+TDNFCliInvokePluginList(
+    PTDNF_CLI_CONTEXT pContext,
+    PTDNF_PLUGIN_INFO *pszPluginInfo,
+    uint32_t *pdwCount
+    );

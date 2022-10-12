@@ -407,6 +407,21 @@ TDNFFreeRepos(
     }
 }
 
+void
+TDNFFreePluginInfo(
+    PTDNF_PLUGIN_INFO pPluginInfo,
+    uint32_t dwCount
+    )
+{
+    if(pPluginInfo)
+    {
+        for (uint32_t i = 0; i < dwCount; i++) {
+            TDNF_SAFE_FREE_MEMORY(pPluginInfo[i].pszName);
+        }
+        TDNF_SAFE_FREE_MEMORY(pPluginInfo);
+    }
+}
+
 uint32_t
 TDNFYesOrNo(
     PTDNF_CMD_ARGS pArgs,

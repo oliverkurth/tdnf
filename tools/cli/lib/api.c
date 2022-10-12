@@ -1291,7 +1291,7 @@ TDNFCliMarkCommand(
     uint32_t dwError = 0;
     uint32_t nValue = 0;
 
-    if(!pContext || !pContext->hTdnf || !pContext->pFnCount)
+    if(!pContext || !pContext->hTdnf || !pContext->pFnMark)
     {
         dwError = ERROR_TDNF_CLI_INVALID_ARGUMENT;
         BAIL_ON_CLI_ERROR(dwError);
@@ -1336,6 +1336,78 @@ TDNFCliMarkCommand(
 cleanup:
     return dwError;
 
+error:
+    goto cleanup;
+}
+
+uint32_t
+TDNFCliPluginCommand(
+    PTDNF_CLI_CONTEXT pContext,
+    PTDNF_CMD_ARGS pCmdArgs
+    )
+{
+    uint32_t dwError = 0;
+    PTDNF_PLUGIN_INFO pPluginInfo = NULL;
+    uint32_t dwCount = 0, i;
+    struct json_dump *jd = NULL;
+    struct json_dump *jd_plugin = NULL;
+
+    if(!pContext || !pContext->hTdnf || !pContext->pFnPluginList)
+    {
+        dwError = ERROR_TDNF_CLI_INVALID_ARGUMENT;
+        BAIL_ON_CLI_ERROR(dwError);
+    }
+
+    if(pCmdArgs->nCmdCount <= 1) {
+        pr_crit("need action ('list') as argument\n");
+        dwError = ERROR_TDNF_INVALID_PARAMETER;
+        BAIL_ON_CLI_ERROR(dwError);
+    }
+
+    /* we only support 'list' so far */
+    if (strcmp(pCmdArgs->ppszCmds[1], "list") != 0) {
+        pr_crit("unknown action '%s'\n", pCmdArgs->ppszCmds[1]);
+        dwError = ERROR_TDNF_INVALID_PARAMETER;
+        BAIL_ON_CLI_ERROR(dwError);
+    }
+
+    dwError = pContext->pFnPluginList(pContext, &pPluginInfo, &dwCount);
+    BAIL_ON_CLI_ERROR(dwError);
+
+    if (pCmdArgs->nJsonOutput) {
+        jd = jd_create(0);
+        CHECK_JD_NULL(jd);
+
+        CHECK_JD_RC(jd_list_start(jd));
+
+        for(i = 0; i < dwCount; i++) {
+            jd_plugin = jd_create(0);
+            CHECK_JD_NULL(jd_plugin);
+
+            jd_map_start(jd_plugin);
+
+            CHECK_JD_RC(jd_map_add_string(jd_plugin, "Name", pPluginInfo[i].pszName));
+            CHECK_JD_RC(jd_map_add_bool(jd_plugin, "Enabled", pPluginInfo[i].nEnabled));
+
+            CHECK_JD_RC(jd_list_add_child(jd, jd_plugin));
+            JD_SAFE_DESTROY(jd_plugin);
+        }
+        pr_json(jd->buf);
+        JD_SAFE_DESTROY(jd);
+    } else {
+        if (dwCount > 0) {
+            for (i = 0; i < dwCount; i++) {
+                pr_info("%-20s %s\n", pPluginInfo[i].pszName, pPluginInfo[i].nEnabled ? "enabled" : "disabled");
+            }
+        } else {
+            pr_info("plugins are disabled or no plugins found\n");
+        }
+    }
+cleanup:
+    JD_SAFE_DESTROY(jd);
+    JD_SAFE_DESTROY(jd_plugin);
+    TDNFFreePluginInfo(pPluginInfo, dwCount);
+    return dwError;
 error:
     goto cleanup;
 }

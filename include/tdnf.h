@@ -221,6 +221,13 @@ TDNFMark(
     uint32_t dwValue
     );
 
+uint32_t
+TDNFPluginList(
+    PTDNF pTdnf,
+    PTDNF_PLUGIN_INFO *pszPluginInfo,
+    uint32_t *pdwCount
+);
+
 //Show a descriptive error message
 //divided into different areas like
 //solv, repo, rpm and generic tdnf errors.
@@ -287,6 +294,11 @@ TDNFFreeHistoryInfo(
     PTDNF_HISTORY_INFO pHistoryInfo
 );
 
+void
+TDNFFreePluginInfo(
+    PTDNF_PLUGIN_INFO pPluginInfo,
+    uint32_t dwCount
+);
 
 uint32_t TDNFUriIsRemote(
     const char* pszKeyUrl,

@@ -40,6 +40,7 @@ static TDNF_CLI_CMD_MAP arCmdMap[] =
     {"list",               TDNFCliListCommand, false},
     {"makecache",          TDNFCliMakeCacheCommand, true},
     {"mark",               TDNFCliMarkCommand, false},
+    {"plugin",             TDNFCliPluginCommand, false},
     {"provides",           TDNFCliProvidesCommand, false},
     {"whatprovides",       TDNFCliProvidesCommand, false},
     {"reinstall",          TDNFCliReinstallCommand, true},
@@ -105,6 +106,7 @@ int main(int argc, char **argv)
         _context.pFnHistoryResolve = TDNFCliInvokeHistoryResolve;
         _context.pFnAlterHistory = TDNFCliInvokeAlterHistory;
         _context.pFnMark = TDNFCliInvokeMark;
+        _context.pFnPluginList = TDNFCliInvokePluginList;
 
         pszCmd = pCmdArgs->ppszCmds[0];
 
@@ -538,4 +540,14 @@ TDNFCliInvokeMark(
     )
 {
     return TDNFMark(pContext->hTdnf, ppszPkgNameSpecs, nValue);
+}
+
+uint32_t
+TDNFCliInvokePluginList(
+    PTDNF_CLI_CONTEXT pContext,
+    PTDNF_PLUGIN_INFO *pszPluginInfo,
+    uint32_t *pdwCount
+    )
+{
+    return TDNFPluginList(pContext->hTdnf, pszPluginInfo, pdwCount);
 }

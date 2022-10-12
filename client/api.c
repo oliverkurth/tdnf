@@ -2401,6 +2401,50 @@ error:
     goto cleanup;
 }
 
+uint32_t
+TDNFPluginList(
+    PTDNF pTdnf,
+    PTDNF_PLUGIN_INFO *ppPluginInfo,
+    uint32_t *pdwCount
+    )
+{
+    uint32_t dwError = 0;
+    int count = 0, i;
+    PTDNF_PLUGIN pPlugin;
+    PTDNF_PLUGIN_INFO pPluginInfo = NULL;
+
+    if(!pTdnf || !ppPluginInfo)
+    {
+        dwError = ERROR_TDNF_INVALID_PARAMETER;
+        BAIL_ON_TDNF_ERROR(dwError);
+    }
+
+    for (pPlugin = pTdnf->pPlugins; pPlugin; pPlugin = pPlugin->pNext){
+        count++;
+    }
+    if (count > 0) {
+        dwError = TDNFAllocateMemory(count,
+                                     sizeof(TDNF_PLUGIN_INFO),
+                                     (void**)&pPluginInfo);
+        BAIL_ON_TDNF_ERROR(dwError);
+
+        for (pPlugin = pTdnf->pPlugins, i = 0;
+             pPlugin;
+             pPlugin = pPlugin->pNext, i++){
+            dwError = TDNFAllocateString(pPlugin->pszName,
+                                          &pPluginInfo[i].pszName);
+            pPluginInfo[i].nEnabled = pPlugin->nEnabled;
+        }
+    }
+    *pdwCount = count;
+    *ppPluginInfo = pPluginInfo;
+cleanup:
+    return dwError;
+error:
+    TDNFFreePluginInfo(pPluginInfo, count);
+    goto cleanup;
+}
+
 //api calls to free memory allocated by tdnfclientlib
 void
 TDNFCloseHandle(
