@@ -32,4 +32,5 @@ def test_setopt_reposdir(utils):
                           "http://foo.bar.com/packages",
                           REPONAME)
     ret = utils.run(['tdnf', '--setopt=reposdir={}'.format(REPODIR), 'repolist'])
+    print ("ret['stdout'] ", ret['stdout'])
     assert REPONAME in "\n".join(ret['stdout'])
