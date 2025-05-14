@@ -218,6 +218,13 @@ TDNFGPGCheckPackage(
     int nRemote = 0;
     int i;
     int nMatched = 0;
+    char *pszTmp = NULL;
+
+    if(pTS == NULL || pTdnf == NULL || pRepo == NULL || IsNullOrEmptyString(pszFilePath))
+    {
+        dwError = ERROR_TDNF_INVALID_PARAMETER;
+        BAIL_ON_TDNF_ERROR(dwError);
+    }
 
     dwError = TDNFGetGPGSignatureCheck(pTdnf, pRepo, &nGPGSigCheck, NULL);
     BAIL_ON_TDNF_ERROR(dwError);
@@ -234,9 +241,20 @@ TDNFGPGCheckPackage(
                   fp,
                   pszFilePath,
                   &rpmHeader);
-
     Fclose(fp);
     fp = NULL;
+
+    if (nGPGSigCheck) {
+        /* refuse to install an unsigned package if gpgcheck is enabled */
+        if (((pszTmp = headerGetAsString(rpmHeader, RPMTAG_SIGPGP)) == NULL) &&
+            ((pszTmp = headerGetAsString(rpmHeader, RPMTAG_SIGGPG)) == NULL) &&
+            ((pszTmp = headerGetAsString(rpmHeader, RPMTAG_DSAHEADER)) == NULL) &&
+            ((pszTmp = headerGetAsString(rpmHeader, RPMTAG_RSAHEADER)) == NULL))
+        {
+            dwError = ERROR_TDNF_RPM_CHECK;
+            BAIL_ON_TDNF_ERROR(dwError);
+        }
+    }
 
     if (dwError != RPMRC_NOTTRUSTED && dwError != RPMRC_NOKEY)
     {
@@ -344,6 +362,7 @@ TDNFGPGCheckPackage(
 cleanup:
     TDNF_SAFE_FREE_STRINGARRAY(ppszUrlGPGKeys);
     TDNF_SAFE_FREE_MEMORY(pszLocalGPGKey);
+    TDNF_SAFE_FREE_MEMORY(pszTmp);
     if(fp)
     {
         Fclose(fp);
