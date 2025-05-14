@@ -301,6 +301,11 @@ TDNFReadConfig(
     dwError = TDNFConfigFromCnfTree(pConf, cn_conf->first_child);
     BAIL_ON_TDNF_ERROR(dwError);
 
+    /* override from cmd line */
+    if (pTdnf->pArgs->nNoGPGCheck) {
+        pConf->nGPGCheck = 0;
+    }
+
     pszTdnfVersion = TDNFGetVersion();
 
     if (pConf->pszOSName == NULL)
