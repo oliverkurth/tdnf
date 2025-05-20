@@ -394,11 +394,6 @@ TDNFCreateRepo(
     pRepo->nSkipMDUpdateInfo = TDNF_REPO_DEFAULT_SKIP_MD_UPDATEINFO;
     pRepo->nSkipMDOther = TDNF_REPO_DEFAULT_SKIP_MD_OTHER;
 
-    /* override from cmd line */
-    if (pTdnf->pArgs->nNoGPGCheck) {
-        pRepo->nGPGCheck = 0;
-    }
-
     *ppRepo = pRepo;
 cleanup:
     return dwError;
@@ -645,6 +640,11 @@ TDNFLoadReposFromFile(
         /* default to repo id if name isn't set */
         if (pRepo->pszName == NULL)
             pRepo->pszName = strdup(pRepo->pszId);
+
+        /* override from cmd line */
+        if (pTdnf->pArgs->nNoGPGCheck) {
+            pRepo->nGPGCheck = 0;
+        }
 
         pRepo->pNext = pRepos;
         pRepos = pRepo;
