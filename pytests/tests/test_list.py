@@ -6,6 +6,7 @@
 # of the License are located in the COPYING file of this distribution.
 #
 
+import json
 import pytest
 
 
@@ -88,3 +89,34 @@ def test_list_notinstalled(utils):
         # spkg is not installed, expect error
         ret = utils.run(['tdnf', 'list', cmd, spkg])
         assert ret['retval'] == 1011
+
+
+def test_list_multiple(utils):
+    mpkg = utils.config["mulversion_pkgname"]
+    spkg = utils.config["sglversion_pkgname"]
+
+    ret = utils.run(['tdnf', 'list', mpkg, spkg])
+    assert ret['retval'] == 0
+
+    # fail if any of the specs has no match, but still list the others
+    for args in [[spkg, 'invalid_package'], ['invalid_package', spkg]]:
+        ret = utils.run(['tdnf', 'list'] + args)
+        assert ret['retval'] == 1011
+        assert any(line.startswith(spkg + '.') for line in ret['stdout'])
+
+    ret = utils.run(['tdnf', 'list', 'invalid_package', 'invalid_package2'])
+    assert ret['retval'] == 1011
+
+
+def test_list_multiple_json(utils):
+    spkg = utils.config["sglversion_pkgname"]
+
+    # json output does not fail for specs without a match
+    ret = utils.run(['tdnf', '-j', 'list', spkg, 'invalid_package'])
+    assert ret['retval'] == 0
+    pkgs = json.loads("\n".join(ret['stdout']))
+    assert any(pkg['Name'] == spkg for pkg in pkgs)
+
+    ret = utils.run(['tdnf', '-j', 'list', 'invalid_package', 'invalid_package2'])
+    assert ret['retval'] == 0
+    assert json.loads("\n".join(ret['stdout'])) == []

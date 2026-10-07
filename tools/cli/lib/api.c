@@ -235,6 +235,7 @@ TDNFCliListCommand(
     )
 {
     uint32_t dwError = 0;
+    uint32_t dwListError = 0;
     PTDNF_PKG_INFO pPkgInfo = NULL;
     uint32_t dwCount = 0;
     PTDNF_LIST_ARGS pListArgs = NULL;
@@ -249,13 +250,24 @@ TDNFCliListCommand(
     BAIL_ON_CLI_ERROR(dwError);
 
     dwError = pContext->pFnList(pContext, pListArgs, &pPkgInfo, &dwCount);
-    if (pCmdArgs->nJsonOutput && dwError == ERROR_TDNF_NO_MATCH)
+    if (dwError == ERROR_TDNF_NO_MATCH)
     {
+        /*
+         * with multiple specs, packages matching the other specs are
+         * still returned - print them before failing
+         */
+        if (!pCmdArgs->nJsonOutput)
+        {
+            dwListError = dwError;
+        }
         dwError = 0;
     }
     BAIL_ON_CLI_ERROR(dwError);
 
     dwError = TDNFCliListPackagesPrint(pPkgInfo, dwCount, pCmdArgs->nJsonOutput);
+    BAIL_ON_CLI_ERROR(dwError);
+
+    dwError = dwListError;
     BAIL_ON_CLI_ERROR(dwError);
 
 cleanup:

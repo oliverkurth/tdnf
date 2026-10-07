@@ -498,31 +498,16 @@ TDNFList(
                     DETAIL_LIST);
 }
 
-uint32_t
-TDNFListInternal(
+static uint32_t
+TDNFListQuery(
     PTDNF pTdnf,
     TDNF_SCOPE nScope,
     char** ppszPackageNameSpecs,
-    PTDNF_PKG_INFO* ppPkgInfo,
-    uint32_t* pdwCount,
-    TDNF_PKG_DETAIL nDetail
+    Queue* pQueueResult
     )
 {
     uint32_t dwError = 0;
-    uint32_t dwCount = 0;
-    PTDNF_PKG_INFO pPkgInfo = NULL;
     PSolvQuery pQuery = NULL;
-    PSolvPackageList pPkgList = NULL;
-
-    if(!pTdnf || !pTdnf->pSack || !ppszPackageNameSpecs ||
-       !ppPkgInfo || !pdwCount)
-    {
-        dwError = ERROR_TDNF_INVALID_PARAMETER;
-        BAIL_ON_TDNF_ERROR(dwError);
-    }
-
-    dwError = TDNFRefresh(pTdnf);
-    BAIL_ON_TDNF_ERROR(dwError);
 
     dwError = SolvCreateQuery(pTdnf->pSack, &pQuery);
     BAIL_ON_TDNF_ERROR(dwError);
@@ -536,34 +521,120 @@ TDNFListInternal(
     dwError = SolvApplyListQuery(pQuery);
     BAIL_ON_TDNF_ERROR(dwError);
 
-    dwError = SolvGetQueryResult(pQuery, &pPkgList);
-    if (dwError == ERROR_TDNF_NO_MATCH && !*ppszPackageNameSpecs)
-    {
-        dwError = 0;
-    }
-    else if (dwError == 0)
-    {
-        dwError = TDNFPopulatePkgInfoArray(
-                      pTdnf->pSack,
-                      pPkgList,
-                      nDetail,
-                      &pPkgInfo,
-                      &dwCount);
-    }
-    BAIL_ON_TDNF_ERROR(dwError);
-
-    *ppPkgInfo = pPkgInfo;
-    *pdwCount = dwCount;
+    queue_insertn(pQueueResult,
+                  pQueueResult->count,
+                  pQuery->queueResult.count,
+                  pQuery->queueResult.elements);
 
 cleanup:
     if(pQuery)
     {
         SolvFreeQuery(pQuery);
     }
+    return dwError;
+error:
+    goto cleanup;
+}
+
+/*
+ * For DETAIL_LIST with more than one spec, each spec has to match at
+ * least one package. If a spec does not match, ERROR_TDNF_NO_MATCH is
+ * returned, but packages matching the other specs are still returned
+ * in ppPkgInfo/pdwCount.
+ */
+uint32_t
+TDNFListInternal(
+    PTDNF pTdnf,
+    TDNF_SCOPE nScope,
+    char** ppszPackageNameSpecs,
+    PTDNF_PKG_INFO* ppPkgInfo,
+    uint32_t* pdwCount,
+    TDNF_PKG_DETAIL nDetail
+    )
+{
+    uint32_t dwError = 0;
+    uint32_t dwCount = 0;
+    PTDNF_PKG_INFO pPkgInfo = NULL;
+    PSolvPackageList pPkgList = NULL;
+    Queue queueResult = {0};
+    char** ppszSpec = NULL;
+    int nPrevCount = 0;
+    int nMissing = 0;
+
+    queue_init(&queueResult);
+
+    if(!pTdnf || !pTdnf->pSack || !ppszPackageNameSpecs ||
+       !ppPkgInfo || !pdwCount)
+    {
+        dwError = ERROR_TDNF_INVALID_PARAMETER;
+        BAIL_ON_TDNF_ERROR(dwError);
+    }
+
+    dwError = TDNFRefresh(pTdnf);
+    BAIL_ON_TDNF_ERROR(dwError);
+
+    if (nDetail == DETAIL_LIST &&
+        ppszPackageNameSpecs[0] && ppszPackageNameSpecs[1])
+    {
+        /* query each spec separately to find specs without a match */
+        for (ppszSpec = ppszPackageNameSpecs; *ppszSpec; ppszSpec++)
+        {
+            char* ppszSingleSpec[] = {*ppszSpec, NULL};
+
+            nPrevCount = queueResult.count;
+            dwError = TDNFListQuery(pTdnf, nScope,
+                                    ppszSingleSpec, &queueResult);
+            BAIL_ON_TDNF_ERROR(dwError);
+
+            if (queueResult.count == nPrevCount)
+            {
+                nMissing = 1;
+            }
+        }
+    }
+    else
+    {
+        dwError = TDNFListQuery(pTdnf, nScope,
+                                ppszPackageNameSpecs, &queueResult);
+        BAIL_ON_TDNF_ERROR(dwError);
+    }
+
+    if (queueResult.count == 0)
+    {
+        if (*ppszPackageNameSpecs)
+        {
+            dwError = ERROR_TDNF_NO_MATCH;
+            BAIL_ON_TDNF_ERROR(dwError);
+        }
+    }
+    else
+    {
+        dwError = SolvQueueToPackageList(&queueResult, &pPkgList);
+        BAIL_ON_TDNF_ERROR(dwError);
+
+        dwError = TDNFPopulatePkgInfoArray(
+                      pTdnf->pSack,
+                      pPkgList,
+                      nDetail,
+                      &pPkgInfo,
+                      &dwCount);
+        BAIL_ON_TDNF_ERROR(dwError);
+    }
+
+    *ppPkgInfo = pPkgInfo;
+    *pdwCount = dwCount;
+
+    if (nMissing)
+    {
+        dwError = ERROR_TDNF_NO_MATCH;
+    }
+
+cleanup:
     if(pPkgList)
     {
         SolvFreePackageList(pPkgList);
     }
+    queue_free(&queueResult);
     return dwError;
 error:
     if(ppPkgInfo)
