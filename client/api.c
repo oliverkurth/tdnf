@@ -498,7 +498,7 @@ TDNFList(
                     ppPkgInfo, pdwCount,
                     DETAIL_LIST,
                     pTdnf && pTdnf->pConf &&
-                    pTdnf->pConf->nListRequireAllMatches);
+                    pTdnf->pConf->nRequireAllMatches);
 }
 
 static uint32_t
@@ -1877,6 +1877,8 @@ TDNFSearchCommand(
     int nIndex = 0;
     uint32_t unCount  = 0;
     Id dwPkgId = 0;
+    int nPrevCount = 0;
+    int nMissing = 0;
     if(!pTdnf || !pCmdArgs || !ppPkgInfo || !punCount || !pTdnf->pSack)
     {
         dwError = ERROR_TDNF_INVALID_PARAMETER;
@@ -1897,12 +1899,40 @@ TDNFSearchCommand(
     dwError = SolvCreateQuery(pTdnf->pSack, &pQuery);
     BAIL_ON_TDNF_ERROR(dwError);
 
-    dwError = SolvApplySearch(
-                  pQuery,
-                  pCmdArgs->ppszCmds,
-                  nStartArgIndex,
-                  pCmdArgs->nCmdCount);
-    BAIL_ON_TDNF_ERROR(dwError);
+    if (pTdnf->pConf->nRequireAllMatches &&
+        pCmdArgs->nCmdCount - nStartArgIndex > 1)
+    {
+        /* search each term separately to find terms without a match */
+        for (nIndex = nStartArgIndex; nIndex < pCmdArgs->nCmdCount; nIndex++)
+        {
+            nPrevCount = pQuery->queueResult.count;
+            dwError = SolvApplySearch(
+                          pQuery,
+                          pCmdArgs->ppszCmds,
+                          nIndex,
+                          nIndex + 1);
+            BAIL_ON_TDNF_ERROR(dwError);
+
+            if (pQuery->queueResult.count == nPrevCount)
+            {
+                if (!pCmdArgs->nJsonOutput)
+                {
+                    pr_err("No match found for '%s'\n",
+                           pCmdArgs->ppszCmds[nIndex]);
+                }
+                nMissing = 1;
+            }
+        }
+    }
+    else
+    {
+        dwError = SolvApplySearch(
+                      pQuery,
+                      pCmdArgs->ppszCmds,
+                      nStartArgIndex,
+                      pCmdArgs->nCmdCount);
+        BAIL_ON_TDNF_ERROR(dwError);
+    }
 
     dwError = SolvGetQueryResult(pQuery, &pPkgList);
     BAIL_ON_TDNF_ERROR(dwError);
@@ -1941,6 +1971,12 @@ TDNFSearchCommand(
 
     *ppPkgInfo = pPkgInfo;
     *punCount = unCount;
+
+    /* packages matching the other terms are still returned */
+    if (nMissing)
+    {
+        dwError = ERROR_TDNF_NO_SEARCH_RESULTS;
+    }
 
 cleanup:
     if(pQuery)

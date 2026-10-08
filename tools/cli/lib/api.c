@@ -492,6 +492,7 @@ TDNFCliSearchCommand(
     )
 {
     uint32_t dwError = 0;
+    uint32_t dwSearchError = 0;
     uint32_t dwCount = 0;
     uint32_t dwIndex = 0;
     PTDNF_PKG_INFO pPkgInfo = NULL;
@@ -506,8 +507,16 @@ TDNFCliSearchCommand(
     }
 
     dwError = pContext->pFnSearch(pContext, pCmdArgs, &pPkgInfo, &dwCount);
-    if (pCmdArgs->nJsonOutput && dwError == ERROR_TDNF_NO_SEARCH_RESULTS)
+    if (dwError == ERROR_TDNF_NO_SEARCH_RESULTS)
     {
+        /*
+         * with multiple terms, packages matching the other terms may
+         * still be returned - print them before failing
+         */
+        if (!pCmdArgs->nJsonOutput)
+        {
+            dwSearchError = dwError;
+        }
         dwError = 0;
     }
     BAIL_ON_CLI_ERROR(dwError);
@@ -545,6 +554,9 @@ TDNFCliSearchCommand(
             pr_crit("%s : %s\n", pPkg->pszName, pPkg->pszSummary);
         }
     }
+
+    dwError = dwSearchError;
+    BAIL_ON_CLI_ERROR(dwError);
 
 cleanup:
     TDNFFreePackageInfoArray(pPkgInfo, dwCount);

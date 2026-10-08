@@ -108,7 +108,7 @@ def test_list_multiple(utils):
 def test_list_multiple_require_all(utils):
     mpkg = utils.config["mulversion_pkgname"]
     spkg = utils.config["sglversion_pkgname"]
-    opt = '--setopt=list_require_all_matches=1'
+    opt = '--setopt=require_all_matches=1'
 
     ret = utils.run(['tdnf', opt, 'list', mpkg, spkg])
     assert ret['retval'] == 0
@@ -129,7 +129,7 @@ def test_list_multiple_require_all(utils):
 
 def test_list_multiple_require_all_json(utils):
     spkg = utils.config["sglversion_pkgname"]
-    opt = '--setopt=list_require_all_matches=1'
+    opt = '--setopt=require_all_matches=1'
 
     # json output does not fail for specs without a match
     ret = utils.run(['tdnf', opt, '-j', 'list', spkg, 'invalid_package'])

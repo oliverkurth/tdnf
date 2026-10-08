@@ -234,9 +234,9 @@ TDNFConfigFromCnfTree(PTDNF_CONF pConf, struct cnfnode *cn_top)
         {
             pConf->nDistroSyncReinstallChanged = isTrue(cn->value);
         }
-        else if (strcmp(cn->name, TDNF_CONF_KEY_LIST_REQUIRE_ALL_MATCHES) == 0)
+        else if (strcmp(cn->name, TDNF_CONF_KEY_REQUIRE_ALL_MATCHES) == 0)
         {
-            pConf->nListRequireAllMatches = isTrue(cn->value);
+            pConf->nRequireAllMatches = isTrue(cn->value);
         }
         else if (strcmp(cn->name, TDNF_CONF_KEY_PROXY) == 0)
         {
