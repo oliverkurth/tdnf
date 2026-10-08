@@ -537,10 +537,10 @@ error:
 }
 
 /*
- * For DETAIL_LIST with more than one spec, each spec has to match at
- * least one package. If a spec does not match, ERROR_TDNF_NO_MATCH is
- * returned, but packages matching the other specs are still returned
- * in ppPkgInfo/pdwCount.
+ * For DETAIL_LIST with more than one spec and list_require_all_matches
+ * set, each spec has to match at least one package. If a spec does not
+ * match, ERROR_TDNF_NO_MATCH is returned, but packages matching the other
+ * specs are still returned in ppPkgInfo/pdwCount.
  */
 uint32_t
 TDNFListInternal(
@@ -573,7 +573,7 @@ TDNFListInternal(
     dwError = TDNFRefresh(pTdnf);
     BAIL_ON_TDNF_ERROR(dwError);
 
-    if (nDetail == DETAIL_LIST &&
+    if (nDetail == DETAIL_LIST && pTdnf->pConf->nListRequireAllMatches &&
         ppszPackageNameSpecs[0] && ppszPackageNameSpecs[1])
     {
         /* query each spec separately to find specs without a match */
