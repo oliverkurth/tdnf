@@ -319,12 +319,14 @@ TDNFCheckUpdates(
     )
 {
     uint32_t dwError = 0;
-    dwError = TDNFList(
+    dwError = TDNFListInternal(
                   pTdnf,
                   SCOPE_UPGRADES,
                   ppszPackageNameSpecs,
                   ppPkgInfo,
-                  pdwCount);
+                  pdwCount,
+                  DETAIL_LIST,
+                  0);
     if(dwError == ERROR_TDNF_NO_MATCH)
     {
         dwError = 0;
@@ -479,8 +481,7 @@ TDNFInfo(
     return TDNFListInternal(pTdnf, nScope,
                     ppszPackageNameSpecs,
                     ppPkgInfo, pdwCount,
-                    DETAIL_INFO
-                    );
+                    DETAIL_INFO, 0);
 }
 
 uint32_t
@@ -495,7 +496,9 @@ TDNFList(
     return TDNFListInternal(pTdnf, nScope,
                     ppszPackageNameSpecs,
                     ppPkgInfo, pdwCount,
-                    DETAIL_LIST);
+                    DETAIL_LIST,
+                    pTdnf && pTdnf->pConf &&
+                    pTdnf->pConf->nListRequireAllMatches);
 }
 
 static uint32_t
@@ -537,10 +540,10 @@ error:
 }
 
 /*
- * For DETAIL_LIST with more than one spec and list_require_all_matches
- * set, each spec has to match at least one package. If a spec does not
- * match, ERROR_TDNF_NO_MATCH is returned, but packages matching the other
- * specs are still returned in ppPkgInfo/pdwCount.
+ * If nRequireAllMatches is set and there is more than one spec, each spec
+ * has to match at least one package. If a spec does not match,
+ * ERROR_TDNF_NO_MATCH is returned, but packages matching the other specs
+ * are still returned in ppPkgInfo/pdwCount.
  */
 uint32_t
 TDNFListInternal(
@@ -549,7 +552,8 @@ TDNFListInternal(
     char** ppszPackageNameSpecs,
     PTDNF_PKG_INFO* ppPkgInfo,
     uint32_t* pdwCount,
-    TDNF_PKG_DETAIL nDetail
+    TDNF_PKG_DETAIL nDetail,
+    int nRequireAllMatches
     )
 {
     uint32_t dwError = 0;
@@ -573,7 +577,7 @@ TDNFListInternal(
     dwError = TDNFRefresh(pTdnf);
     BAIL_ON_TDNF_ERROR(dwError);
 
-    if (nDetail == DETAIL_LIST && pTdnf->pConf->nListRequireAllMatches &&
+    if (nRequireAllMatches &&
         ppszPackageNameSpecs[0] && ppszPackageNameSpecs[1])
     {
         /* query each spec separately to find specs without a match */
@@ -588,6 +592,10 @@ TDNFListInternal(
 
             if (queueResult.count == nPrevCount)
             {
+                if (!pTdnf->pArgs->nJsonOutput)
+                {
+                    pr_err("No match found for '%s'\n", *ppszSpec);
+                }
                 nMissing = 1;
             }
         }

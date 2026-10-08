@@ -118,9 +118,13 @@ def test_list_multiple_require_all(utils):
         ret = utils.run(['tdnf', opt, 'list'] + args)
         assert ret['retval'] == 1011
         assert any(line.startswith(spkg + '.') for line in ret['stdout'])
+        assert "No match found for 'invalid_package'" in '\n'.join(ret['stderr'])
+        assert spkg not in '\n'.join(ret['stderr'])
 
     ret = utils.run(['tdnf', opt, 'list', 'invalid_package', 'invalid_package2'])
     assert ret['retval'] == 1011
+    assert "No match found for 'invalid_package'" in '\n'.join(ret['stderr'])
+    assert "No match found for 'invalid_package2'" in '\n'.join(ret['stderr'])
 
 
 def test_list_multiple_require_all_json(utils):
@@ -130,6 +134,7 @@ def test_list_multiple_require_all_json(utils):
     # json output does not fail for specs without a match
     ret = utils.run(['tdnf', opt, '-j', 'list', spkg, 'invalid_package'])
     assert ret['retval'] == 0
+    assert "No match found for 'invalid_package'" not in '\n'.join(ret['stderr'])
     pkgs = json.loads("\n".join(ret['stdout']))
     assert any(pkg['Name'] == spkg for pkg in pkgs)
 
